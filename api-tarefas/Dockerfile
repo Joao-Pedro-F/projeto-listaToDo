@@ -1,25 +1,25 @@
 # Estágio 1: Build (Compilação)
-# Usamos o Maven com Java 21 para compilar o projeto
+# Usamos o Maven com a JDK 21 para compilar o projeto
 FROM maven:3.9.6-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# Copia os arquivos do projeto para dentro do container
+# Copia os arquivos do seu projeto para dentro do container
 COPY . .
 
-# Executa o build do Maven pulando os testes para ser mais rápido
+# Executa o comando para gerar o arquivo .jar (ignorando os testes)
 RUN mvn clean package -DskipTests
 
 # Estágio 2: Runtime (Execução)
-# Aqui usamos a imagem oficial do Java 25 que você quer
-FROM eclipse-temurin:25-jdk
+# Usamos apenas a JRE/JDK 21 para rodar, deixando a imagem leve
+FROM eclipse-temurin:21-jdk
 WORKDIR /app
 
 # Copia o arquivo .jar gerado no estágio anterior
-# O asterisco (*) garante que ele pegue o arquivo mesmo que a versão mude
+# O uso do asterisco (*) garante que ele encontre o arquivo independente do nome exato
 COPY --from=build /app/target/*.jar app.jar
 
-# Expõe a porta padrão
+# Expõe a porta 8080 (padrão do Spring Boot)
 EXPOSE 8080
 
-# Comando para rodar a aplicação
+# Comando para iniciar a aplicação
 ENTRYPOINT ["java", "-jar", "app.jar"]
