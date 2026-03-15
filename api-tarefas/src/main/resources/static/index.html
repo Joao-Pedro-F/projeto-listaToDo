@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Tarefas Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        :root {
+            --bg: #f0f2f5;
+            --card: #ffffff;
+            --text: #1c1e21;
+            --primary: #6c5ce7;
+            --item-bg: #f8f9fa;
+        }
+
+        [data-theme="dark"] {
+            --bg: #18191a;
+            --card: #242526;
+            --text: #e4e6eb;
+            --primary: #a29bfe;
+            --item-bg: #3a3b3c;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding-top: 50px;
+            transition: 0.3s;
+        }
+
+        .theme-toggle {
+            cursor: pointer;
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 2px solid var(--primary);
+            background: transparent;
+            color: var(--primary);
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .container {
+            background: var(--card);
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            width: 90%;
+            max-width: 450px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: var(--bg);
+            color: var(--text);
+            outline: none;
+        }
+
+        button.add-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+
+        ul { list-style: none; padding: 0; }
+
+        li {
+            background: var(--item-bg);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } }
+
+        .concluida span {
+            text-decoration: line-through;
+            opacity: 0.5;
+        }
+
+        .actions button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <button class="theme-toggle" onclick="toggleTheme()">🌓 Alternar Tema</button>
+
+    <div class="container">
+        <h2>Minhas Tarefas</h2>
+        
+        <div class="input-group">
+            <input type="text" id="tituloTarefa" placeholder="O que vamos fazer hoje?">
+            <button class="add-btn" onclick="cadastrarTarefa()">+</button>
+        </div>
+
+        <ul id="lista"></ul>
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:8080/tarefas";
+
+        function toggleTheme() {
+            const doc = document.documentElement;
+            const theme = doc.getAttribute("data-theme") === "dark" ? "light" : "dark";
+            doc.setAttribute("data-theme", theme);
+        }
+
+        async function listarTarefas() {
+            const res = await fetch(API_URL);
+            const tarefas = await res.json();
+            const lista = document.getElementById("lista");
+            lista.innerHTML = "";
+            
+            tarefas.forEach(t => {
+                const li = document.createElement("li");
+                if(t.concluida) li.classList.add("concluida");
+                
+                li.innerHTML = `
+                    <span>${t.titulo}</span>
+                    <div class="actions">
+                        <button onclick="concluirTarefa(${t.id}, ${t.concluida})">${t.concluida ? '✅' : '⭕'}</button>
+                        <button onclick="excluirTarefa(${t.id})">🗑️</button>
+                    </div>
+                `;
+                lista.appendChild(li);
+            });
+        }
+
+        async function cadastrarTarefa() {
+            const input = document.getElementById("tituloTarefa");
+            if (!input.value) return;
+
+            await fetch(API_URL, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ titulo: input.value, concluida: false })
+            });
+            input.value = "";
+            listarTarefas();
+        }
+
+        async function concluirTarefa(id, jaConcluida) {
+            const res = await fetch(`${API_URL}/${id}/concluir`, { method: 'PATCH' });
+            if (res.ok && !jaConcluida) {
+                confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+            }
+            listarTarefas();
+        }
+
+        async function excluirTarefa(id) {
+            await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            listarTarefas();
+        }
+
+        listarTarefas();
+    </script>
+</body>
+</html>
